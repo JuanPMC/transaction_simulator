@@ -1,41 +1,46 @@
-version: '3'
+version: '3.8'
+
 services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
   kafka:
-    image: bitnami/kafka
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
     ports:
       - "9092:9092"
+    depends_on:
+      - zookeeper
     environment:
-      - KAFKA_BROKER_ID=1
-      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
-      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
-  zookeeper:
-    image: bitnami/zookeeper
-    ports:
-      - "2181:2181"
-
-  redis:
-    image: redis
-
-  db:
-    image: postgres
+  api_gateway_service:
+    build:
+      context: .
+      dockerfile: api_gateway/Dockerfile
+    depends_on:
+      - kafka
+    volumes:
+      - ./juan_lib:/juan_lib
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      PYTHONPATH: /juan_lib
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     ports:
-      - "5432:5432"
-
-  api:
-    build: .
-    command: uvicorn api.main:app --host 0.0.0.0 --port 8000
-    depends_on: [kafka, redis, db]
-
-  worker:
-    build: .
-    command: celery -A tasks.celery_tasks worker --loglevel=info
-    depends_on: [redis, db]
-
-  consumer:
-    build: .
-    command: python consumers/kafka_consumer.py
-    depends_on: [kafka, worker]
+      - "8000:8000"
+      
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    container_name: kafdrop
+    ports:
+      - "9000:9000"
+    environment:
+      KAFKA_BROKERCONNECT: kafka:9092
+    depends_on:
+      - kafka

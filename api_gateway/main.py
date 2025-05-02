@@ -1,13 +1,11 @@
-from fastapi import FastAPI, HTTPException
-from kafka import KafkaProducer
-import json
+from fastapi import FastAPI
+from juan_lib.transactions import TransactionLog, Transaction
 
 app = FastAPI()
-producer = KafkaProducer(bootstrap_servers='kafka:9092',
-                         value_serializer=lambda v: json.dumps(v).encode('utf-8'))
 
 
 @app.post("/transaction")
-async def create_transaction(transaction: dict):
-    producer.send("transactions", transaction)
+async def create_transaction(transaction: Transaction):
+    transaction_log = TransactionLog()
+    transaction_log.send_transaction_data(transaction)
     return {"status": "submitted"}
