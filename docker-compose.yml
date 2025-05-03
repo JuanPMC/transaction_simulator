@@ -34,7 +34,31 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     ports:
       - "8000:8000"
-      
+
+  data_estracter:
+    build:
+      context: .
+      dockerfile: data_estracter/Dockerfile
+    depends_on:
+      - kafka
+    volumes:
+      - ./juan_lib:/juan_lib
+    environment:
+      PYTHONPATH: /juan_lib
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+  transaction_processer:
+    build:
+      context: .
+      dockerfile: transaction_processer/Dockerfile
+    depends_on:
+      - kafka
+    volumes:
+      - ./juan_lib:/juan_lib
+    environment:
+      PYTHONPATH: /juan_lib
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
   kafdrop:
     image: obsidiandynamics/kafdrop
     container_name: kafdrop
